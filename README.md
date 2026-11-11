@@ -24,15 +24,34 @@
 
 ## 安装
 
-需要一个已经装好的 DeepSeek Harness（`dsh`）。把本仓库放到任意固定目录，例如 Windows 的 `C:\tools\plan-gate` 或 macOS / Linux 的 `~/tools/plan-gate`：
+需要一个已经装好的 DeepSeek Harness（`dsh`）。三种装法，按需要挑一种：
+
+### 方式一：插件管理器（推荐）
+
+插件管理 → 安装 bundle → 规格填：
+
+```
+github:male404/dsh-plan-gate
+```
+
+安装器会 clone 仓库，并按 `package.json` 里的 `dsh.bundle.patch` 注册插件。本项目是纯 JS、没有构建步骤，git 安装不会被 `prepare` 卡住。
+
+两点注意：
+
+- 目录名按包名建（`@local/plan-gate`）：如果你之前用 link 装过同名包，会被顶掉。
+- git 源不跟版本走：项目更新后要重装一次才拿到新代码。
+
+装完重启 DSH，或在插件管理器里禁用再启用这个插件。
+
+### 方式二：手动 link（自己改代码时用）
+
+clone 到固定目录，例如 Windows 的 `C:\tools\plan-gate` 或 macOS / Linux 的 `~/tools/plan-gate`：
 
 ```bash
 git clone https://github.com/male404/dsh-plan-gate.git ~/tools/plan-gate
 ```
 
-### 手动 link（最稳）
-
-编辑你的 profile 清单 `~/.dsh/profiles/<profile>/package.json`，把包名指向 clone 下来的目录：
+编辑 profile 清单 `~/.dsh/profiles/<profile>/package.json`，把包名指向那个目录：
 
 ```json
 {
@@ -47,7 +66,7 @@ git clone https://github.com/male404/dsh-plan-gate.git ~/tools/plan-gate
 }
 ```
 
-然后在同一个目录里安装依赖，再重启 DSH（或禁用再启用这个插件）：
+然后在同一个目录里安装依赖，再重启 DSH：
 
 ```bash
 pnpm install
@@ -55,17 +74,9 @@ pnpm install
 
 > 包名默认是 `@local/plan-gate`，供本地 link 安装。想换成自己的 scope，必须**同时**改三处：`package.json` 的 `name`、`cordis.patch.yml` 里的 `name`、`client.js` 第 2 行的模块 `id`——三处不一致插件会加载失败，而且要把 profile 里的键一起换掉。
 
-### 插件管理器
+### 方式三：从 npm
 
-在插件管理里用「安装 bundle」，规格填仓库地址或包名（取决于当前 DSH 版本是否支持 git 规格）：
-
-```
-github:male404/dsh-plan-gate
-```
-
-### 从 npm
-
-如果你把它发布到 npm（同时改掉 `@local/` 前缀，见上），直接装包名即可：
+如果项目已发布到 npm（同时改掉 `@local/` 前缀，见上），直接装包名即可：
 
 ```bash
 pnpm add <你的包名>
