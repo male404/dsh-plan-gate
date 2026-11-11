@@ -261,6 +261,44 @@ node --check client.js
 | `locale/{zh,en}.json` | 插件管理页的标题/描述 |
 | `icon.svg` | 插件图标 |
 
+## 发布与投稿
+
+### 发一个版本
+
+改完代码、重载插件验证过之后：
+
+```bash
+git add -A
+git commit -m "feat: 这次改了什么"
+git push
+
+git tag -a v1.1.0 -m "dsh-plan-gate 1.1.0"
+git push origin v1.1.0
+```
+
+然后仓库 Releases → Draft a new release，选刚推的 tag，说明贴 `CHANGELOG.md` 对应段落。
+
+> **tag 必须在最后一次代码推送之后打。** 如果打完 tag 又提交了代码，Release 发的就不是最新那份，只能删掉远程 tag 重推：`git push origin :refs/tags/<tag>`，再 `git tag -a <tag> -m "…"` 和 `git push origin <tag>`。
+
+### 投到 dsh.so 插件市场
+
+<https://www.dsh.so/submit/> → 粘仓库地址 → Run checks → 通过后点 **Submit to dsh.so**。六条验收条件与本项目的对应：
+
+| 条件 | 本项目 |
+| --- | --- |
+| `dsh` 字段 | `package.json` 的 `dsh.bundle` + `dsh.client` |
+| README 安装说明 | 就是这份 README |
+| SPDX 许可证标识 | `package.json` 的 `license: "MIT"` |
+| 合法 id | 仓库名 `dsh-plan-gate` 匹配合法 slug |
+| 可扫描源码 | 纯 JS，扫描 8 个文件 |
+| 安全扫描 | 0 严重 / 0 警告（两条「信息」级：设置页的 `fetch`、本地 `127.0.0.1` URL） |
+
+三个实际踩过的坑：
+
+1. **条目 JSON 里的 `license` 是 `NOASSERTION`。** GitHub 的许可证识别器认不出「MIT + Commons Clause」这套组合，所以喂给 dsh.so 的元数据是空的——尽管「格式验证」那一步读 `package.json` 能拿到 MIT。页面允许提交前修改 JSON，把那一行改成 `"MIT"` 再点提交。
+2. **提交有限流。** 同一仓库 10 分钟内只允许几次。第一次失败后按钮旁的「GitHub 目前正在限制提交服务」提示会常驻，不代表之后每次点击都被拒，但也别连点——等十分钟再点一次。
+3. **加 `dsh-plugin` topic 能被自动索引。** 不想手动投稿就把仓库 topic 加上 `dsh-plugin` 或 `dsh-pack`，registry 会自己扫到；代价是得等它扫。
+
 ## 许可
 
 [MIT](LICENSE) + [Commons Clause](https://commonsclause.com/) v1.0。
