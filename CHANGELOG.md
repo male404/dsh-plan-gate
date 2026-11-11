@@ -31,3 +31,7 @@
 ### 附带
 
 - 配套 Skill：`~/.dsh/skills/plan-gate/SKILL.md`，教模型「什么算真歧义、方案要写什么」
+
+### 许可
+
+PolyForm Noncommercial 1.0.0：允许个人学习、研究、修改与再分发，禁止商业用途，分发时须保留 `Required Notice` 署名行。

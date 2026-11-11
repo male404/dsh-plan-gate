@@ -1,8 +1,8 @@
-﻿{
+{
   "name": "@local/plan-gate",
   "version": "1.0.0",
   "description": "先澄清、再出方案、用户批准后才执行：给 DeepSeek Harness 加一道执行前闸门，并附带工作区交接文档。",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "author": "YG",
   "private": false,
   "type": "module",

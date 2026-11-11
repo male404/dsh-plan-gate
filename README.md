@@ -1,4 +1,4 @@
-﻿# dsh-plan-gate
+# dsh-plan-gate
 
 给 **DeepSeek Harness** 加一道执行前闸门：每一轮任务都先澄清真歧义、再提交方案，用户点「批准执行」之后才允许改文件、跑命令、操作电脑或生成内容。
 
@@ -250,6 +250,23 @@ node --check client.js
 | `locale/{zh,en}.json` | 插件管理页的标题/描述 |
 | `icon.svg` | 插件图标 |
 
-## License
+## 许可
 
-[MIT](LICENSE)
+[PolyForm Noncommercial 1.0.0](LICENSE)：
+
+| 允许 | 要求 | 禁止 |
+| --- | --- | --- |
+| 个人学习、研究、实验、爱好项目使用 | 分发时附上许可条款（或它的 URL） | 任何商业用途 |
+| 修改源码、二次开发 | 保留 `Required Notice` 署名行 | 拿它做付费产品或商业服务的一部分 |
+| 分发原版或改过的版本 | 改过的版本也受同一份条款约束 | 用专利主张反诉原作者 |
+
+署名行在 [LICENSE](LICENSE) 第一行：
+
+```
+Required Notice: Copyright (c) 2026 YG — https://github.com/male404/dsh-plan-gate
+```
+
+衍生作品（fork、二次发布、集成进别的项目）请保留这一行，并在说明里注明来源仓库。想商用的，先找我谈授权。
+
+> 这不是法律意见。真要用于商业场景或分发量较大时，按需咨询律师。
+
