@@ -265,6 +265,8 @@ node --check client.js
 
 [MIT](LICENSE) + [Commons Clause](https://commonsclause.com/) v1.0。
 
+`package.json` 的 `license` 字段写的是 `MIT`：SPDX 只有这个标识可用，Commons Clause 属于附加条件、没有对应的 SPDX 表达式。以 [LICENSE](LICENSE) 文件为准。
+
 一句话：**随便用，包括公司内部和商业项目；别把它本身拿去卖。**
 
 | 允许 | 禁止 | 要求 |
