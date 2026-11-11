@@ -1,4 +1,4 @@
-# dsh-plan-gate
+﻿# dsh-plan-gate
 
 给 **DeepSeek Harness** 加一道执行前闸门：每一轮任务都先澄清真歧义、再提交方案，用户点「批准执行」之后才允许改文件、跑命令、操作电脑或生成内容。
 
@@ -27,7 +27,7 @@
 需要一个已经装好的 DeepSeek Harness（`dsh`）。把本仓库放到任意固定目录，例如 Windows 的 `C:\tools\plan-gate` 或 macOS / Linux 的 `~/tools/plan-gate`：
 
 ```bash
-git clone https://github.com/<你的GitHub用户名>/dsh-plan-gate.git ~/tools/plan-gate
+git clone https://github.com/male404/dsh-plan-gate.git ~/tools/plan-gate
 ```
 
 ### 手动 link（最稳）
@@ -60,7 +60,7 @@ pnpm install
 在插件管理里用「安装 bundle」，规格填仓库地址或包名（取决于当前 DSH 版本是否支持 git 规格）：
 
 ```
-github:<你的GitHub用户名>/dsh-plan-gate
+github:male404/dsh-plan-gate
 ```
 
 ### 从 npm
