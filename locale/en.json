@@ -1,0 +1,14 @@
+{
+  "meta": {
+    "title": "Plan Gate",
+    "description": "Asks about real ambiguity first, then submits a plan, and only acts on files, commands or the desktop after you press Approve. Toggle it beside the composer."
+  },
+  "pill": {
+    "label": "Plan gate",
+    "on": "Plan gate · on",
+    "off": "Plan gate · off",
+    "onHint": "On: action tools are blocked until a plan is approved. Click to turn off.",
+    "offHint": "Off: tasks run directly without a plan step. Click to turn on.",
+    "unknown": "State unknown"
+  }
+}

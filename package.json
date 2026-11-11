@@ -1,0 +1,57 @@
+{
+  "name": "@local/plan-gate",
+  "version": "1.0.0",
+  "description": "先澄清、再出方案、用户批准后才执行：给 DeepSeek Harness 加一道执行前闸门，并附带工作区交接文档。",
+  "license": "MIT",
+  "author": "YG",
+  "private": false,
+  "type": "module",
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "plan-gate",
+    "approval-workflow",
+    "agent-safety"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/<GITHUB_USER>/dsh-plan-gate.git"
+  },
+  "homepage": "https://github.com/<GITHUB_USER>/dsh-plan-gate#readme",
+  "bugs": {
+    "url": "https://github.com/<GITHUB_USER>/dsh-plan-gate/issues"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-settings"
+      ]
+    }
+  }
+}

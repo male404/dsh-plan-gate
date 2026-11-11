@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Plan Gate">
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#12331f"/>
+  <path d="M2 16a14 14 0 0 1 14-14h32a14 14 0 0 1 14 14v6H2z" fill="#1d5c37"/>
+  <path d="M25 24.5c0-4.4 3.2-7.6 7.7-7.6 4.4 0 7.5 3 7.5 7 0 3.4-1.8 5-4.6 7-1.9 1.4-2.6 2.4-2.6 4.2v1.3h-5.4v-1.9c0-3 1.1-4.7 3.8-6.6 2.1-1.5 3.2-2.4 3.2-4 0-1.7-1.1-2.8-2.8-2.8-1.8 0-3 1.2-3.2 3.4z" fill="#d6f5c8"/>
+  <circle cx="32.9" cy="44.6" r="3.2" fill="#d6f5c8"/>
+  <path d="M40 24.5l7.5 15.5" stroke="#5bd06a" stroke-width="3.4" stroke-linecap="round" fill="none" opacity=".65"/>
+  <path d="M40.5 40.5l5 5 9.5-11" stroke="#5bd06a" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>
