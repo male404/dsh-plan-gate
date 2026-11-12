@@ -1,0 +1,8 @@
+# 仓库统一 LF。Windows 上 git 的 autocrlf 会把工作区写成 CRLF，
+# 导致同一份文件在副本与仓库之间 SHA 永远对不上；这里把规则写死。
+* text=auto eol=lf
+
+# Windows 批处理/脚本按老规矩用 CRLF，避免 cmd.exe 解析异常
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
