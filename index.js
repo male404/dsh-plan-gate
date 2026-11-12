@@ -208,7 +208,7 @@ const RULES_TEXT = `# Plan Gate（先问后做）
 1. 先用只读手段把事实查清：read / grep / glob / web_search，以及 pwsh 里不带写意图的命令（列目录、读文件、过滤、算哈希、git status）都不受拦截。会写文件、删改、起进程、跑解释器（python / node / npm）、联网（iwr / curl）、改系统设置（reg / sc / schtasks）的命令，以及操作电脑（点击、输入）会被闸门拒绝并返回 \`PLAN_GATE_BLOCKED\`。
 2. 只有真歧义才提问：目标或对象不清、范围不清、交付格式不清、验收标准不清、多个方案代价差别大。自己能查清的事不要问用户。
 3. 提问用宿主的 \`ask_user_question\`（它不受闸门拦截，卡片可直接点选）：1–4 个问题，每个给选项，推荐项放第一个并标注「（推荐）」。用户答完后按答案收敛，不要重复问同一件事。
-4. 没有真歧义时不要提问，直接 \`plan_gate_propose\`：标题、目标、步骤、涉及文件或工具、验收标准、风险与回滚。该工具会阻塞到用户点选。
+4. 没有真歧义时不要提问，直接 \`plan_gate_propose\`：先用一句话总结「这次大概要做什么、做到什么程度」（写进 \`goal\`），再给标题、步骤、涉及文件或工具、验收标准、风险与回滚；\`summary\` 用来补做法与取舍。该工具会阻塞到用户点选。
 5. 只有用户点了「批准执行」，阶段才进入 approved，执行类工具放行；此时一次把方案做完，不要擅自扩大范围。
 6. 用户选择「需要修改」或直接写了新要求：调整方案后再次 \`plan_gate_propose\`，不要先执行再解释。
 7. 纯问答、闲聊、只读调研可以直接回答，不必走闸门。
@@ -222,21 +222,21 @@ const RULES_TEXT_OFF = `# Plan Gate：已关闭
 
 const RULES_TEXT_BRIEF = `# Plan Gate（精简）
 
-本会话要「先问后做」，但方案只归纳改动的点，不要写长篇。
+本会话要「先问后做」，但方案只给概要：一句话说清做什么，再列出要改的文件，不写长篇。
 
 1. 只读手段（read / grep / glob / web_search、pwsh 里的读操作）直接用来查清事实，不受拦截。
 2. 只有真歧义才提问，最多 2 个，每个给选项、推荐项放第一。
-3. 出方案用 \`plan_gate_propose\`，把内容压成改动点：
-   - \`changes\`：一行一条，写「改哪个文件 / 改哪一处 / 改成什么」；
-   - \`files\`：会被改到的路径；
-   - \`acceptance\`：一句话怎么验证。
-   目标、背景、动机、风险那几段不要写——除非某一处会毁数据。
+3. 出方案用 \`plan_gate_propose\`，压到最小：
+   - \`goal\`：一句话总结大概要做什么（必写）；
+   - \`files\`：要改动的文件或目录清单（必写，一行一个路径）；
+   - \`changes\`、\`acceptance\` 可选，只在某处改动必须说清时才补一两行。
+   步骤、目标背景、动机、风险段落不要写——除非某一处会毁数据。
 4. 批准后才动手；未批准时写文件、起进程、操作电脑会被拦并返回 \`PLAN_GATE_BLOCKED\`。
-5. 用户要改方案时，重新提交一份精简的改动点清单，不要先执行。`
+5. 用户要改方案时，重新提交一份「一句话 + 文件清单」，不要先执行。`
 
 function blockReason(toolName, phase, mode) {
   const briefHint = mode === MODE_BRIEF
-    ? '\n当前是精简档：方案只写 changes（一行一条改动）+ files + acceptance，不要写目标与风险段落。'
+    ? '\n当前是精简档：方案只写 goal 一句话（大概要做什么）+ files 文件清单，其余可省，不要写目标与风险段落。'
     : ''
   return `PLAN_GATE_BLOCKED：本轮请求还没有获得方案批准，工具「${toolName}」没有执行（当前阶段：${phase}）。\n`
     + '按顺序处理，不要换别的工具硬试：\n'
@@ -276,10 +276,13 @@ function renderPlan(plan) {
 
 function renderPlanBrief(plan) {
   const lines = [`**${plan.title}**`]
-  const changes = Array.isArray(plan.changes) && plan.changes.length ? plan.changes : plan.steps
-  if (changes?.length) changes.forEach(item => lines.push(`- ${item}`))
-  else if (plan.summary) lines.push(`- ${plan.summary}`)
+  const goal = plan.goal || plan.summary
+  if (goal) lines.push('', `一句话：${goal}`)
+  if (Array.isArray(plan.changes) && plan.changes.length) {
+    plan.changes.forEach(item => lines.push(`- ${item}`))
+  }
   if (plan.files?.length) lines.push('', `改到：${plan.files.join('、')}`)
+  else if (!goal && plan.steps?.length) plan.steps.forEach(item => lines.push(`- ${item}`))
   if (plan.acceptance?.length) lines.push(`验收：${plan.acceptance.join('；')}`)
   if (plan.notes) lines.push(`备注：${plan.notes}`)
   return lines.join('\n')
@@ -586,7 +589,7 @@ async function buildHandoff({ root, sessionId, mode, phase, planTitle, facts, op
   if (known.firstRequest) parts.push(`- 这一轮的起点请求：${known.firstRequest}`)
   parts.push(
     `- 会话 id：\`${sessionId}\``,
-    `- 闸门档位：\`${mode}\`（off = 不拦 / detail = 完整方案 / brief = 只列改动点）`,
+    `- 闸门档位：\`${mode}\`（off = 不拦 / detail = 完整方案 / brief = 一句话 + 文件清单）`,
     `- 闸门阶段：\`${phase}\``,
   )
   if (known.lastMessage) parts.push(`- 最近一条用户消息：${known.lastMessage}`)
@@ -798,7 +801,7 @@ export function apply(ctx, config = {}) {
             : (state.phase === PHASE.APPROVED
               ? '已批准，执行类工具放行。'
               : (state.mode === MODE_BRIEF
-                ? '未批准：方案按精简格式提交（changes / files / acceptance）。'
+                ? '未批准：方案按精简格式提交（goal 一句话 + files 文件清单）。'
                 : '未批准：执行类工具会被拦截，先 plan_gate_propose（必要时先用 ask_user_question 问清）。')),
         }, null, 2),
       }
@@ -808,18 +811,18 @@ export function apply(ctx, config = {}) {
 
   ctx.tools.register({
     name: 'plan_gate_propose',
-    description: '提交执行方案并阻塞等待用户点「批准执行」。批准后执行类工具才放行。详细档写：目标、步骤、涉及文件/产物、验收标准、风险与回滚；精简档只写 changes（每条一个改动点）+ files + acceptance。',
+    description: '提交执行方案并阻塞等待用户点「批准执行」。批准后执行类工具才放行。详细档：先用 goal 一句话总结打算做什么，再给步骤、涉及文件/产物、验收标准、风险与回滚；精简档：goal 一句话 + files 要改动的文件清单即可，changes / acceptance 可选。',
     parameters: {
       type: 'object',
       additionalProperties: false,
       properties: {
         title: { type: 'string', description: '一句话方案名' },
-        changes: { type: 'array', items: { type: 'string' }, description: '精简档主字段：一行一条改动，写清改哪个文件 / 哪一处 / 改成什么' },
-        goal: { type: 'string', description: '要达成什么结果' },
+        goal: { type: 'string', description: '一句话总结大概要做什么（两个档位都写）' },
+        files: { type: 'array', items: { type: 'string' }, description: '要改动的文件、目录或产物路径（精简档主字段，一行一个）' },
+        changes: { type: 'array', items: { type: 'string' }, description: '可选：一行一条改动，写清改哪个文件 / 哪一处 / 改成什么' },
         summary: { type: 'string', description: '可选：一段话说清做法与取舍' },
         steps: { type: 'array', items: { type: 'string' }, description: '按顺序的执行步骤' },
-        files: { type: 'array', items: { type: 'string' }, description: '涉及的文件、目录或产物路径' },
-        acceptance: { type: 'array', items: { type: 'string' }, description: '怎么算做完（可验证的判据）' },
+        acceptance: { type: 'array', items: { type: 'string' }, description: '怎么算做完（可验证的判据），精简档可省' },
         risks: { type: 'array', items: { type: 'string' }, description: '风险与回滚办法' },
         notes: { type: 'string', description: '其他需要用户知道的（依赖、成本、时间）' },
       },
@@ -859,7 +862,9 @@ export function apply(ctx, config = {}) {
             questions: [{
               id: 'approve',
               header: '方案确认',
-              question: brief ? `按这 ${(plan.changes ?? plan.steps ?? []).length} 处改动执行？` : `是否按「${plan.title}」执行？`,
+              question: brief
+                ? `按这 ${(plan.files ?? plan.changes ?? plan.steps ?? []).length} 个文件 / 改动执行？`
+                : `是否按「${plan.title}」执行？`,
               detail: markdown,
               multiSelect: false,
               options: [
