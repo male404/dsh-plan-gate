@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.2.0
+
+新增 git 护栏：本会话不许模型动 git。
+
+### git 护栏
+
+- 新配置 `gitMode`：`block`（默认）/ `off`。`block` 下命令里的 git 写操作被拒绝，返回 `GIT_BLOCKED`。
+- 这道拦截**先于**只读判定、也**先于**批准状态：方案批准不等于允许提交推送。
+- 覆盖 `pwsh` / `bash` / `shell` / `terminal_send`；能识别多段命令（`;` `&&` `||` `|` 换行）、`git -C <path> …`、`git -c k=v …`、绝对路径的 `git.exe`。
+- 拦：`add` `commit` `push` `pull` `fetch` `merge` `rebase` `reset` `checkout` `switch` `restore` `clean` `stash` `tag` `branch` `remote` `config` 的写形态，以及未列出的子命令（保守拦）。
+- 放：`status` `log` `diff` `show` `blame` `shortlog` `describe` `rev-parse` `ls-files` `ls-tree` `cat-file` `show-ref` `merge-base` `grep` `lfs ls-files`，和 `branch` / `tag` / `remote` / `config` 的查询形态。
+- 实测 34 条用例全通过（放行 16、拦截 18）。
+
+### 提示词与状态
+
+- `detail` / `brief` / `off` 三档提示词各加一条「不要动 git」；`off` 档明说护栏不随之关闭。
+- `plan_gate_status` 返回值新增 `gitMode`。
+
 ## 1.1.0
 
 方案先说人话，精简档只列文件。

@@ -120,6 +120,118 @@ const SHELL_GUARD_PATTERN = new RegExp(
 )
 
 const READONLY_COMPUTER_ACTIONS = new Set(['screenshot', 'zoom', 'cursor_position', 'wait'])
+
+/**
+ * git 护栏。gitMode='block'（默认）时，命令里的 git 写操作一律拒绝，**与方案是否已批准无关**；
+ * 只读子命令照常放行。唯一出口是把配置里的 gitMode 设为 off。
+ */
+const GIT_READ_SUBCOMMANDS = new Set([
+  'status', 'log', 'diff', 'show', 'blame', 'shortlog', 'describe', 'rev-parse', 'rev-list',
+  'ls-files', 'ls-tree', 'ls-remote', 'cat-file', 'show-ref', 'for-each-ref', 'count-objects',
+  'help', 'version', 'whatchanged', 'grep', 'check-ignore', 'check-attr', 'merge-base',
+  'name-rev', 'var', 'verify-commit', 'verify-tag',
+])
+
+const GIT_WRITE_SUBCOMMANDS = new Set([
+  'add', 'commit', 'push', 'pull', 'fetch', 'merge', 'rebase', 'reset', 'revert', 'cherry-pick',
+  'checkout', 'switch', 'restore', 'clean', 'stash', 'tag', 'branch', 'remote', 'config',
+  'rm', 'mv', 'init', 'clone', 'apply', 'am', 'format-patch', 'gc', 'prune', 'reflog',
+  'update-ref', 'update-index', 'write-tree', 'commit-tree', 'filter-branch', 'filter-repo',
+  'submodule', 'worktree', 'notes', 'symbolic-ref', 'replace', 'sparse-checkout', 'maintenance',
+  'repack', 'pack-refs', 'bisect', 'archive', 'bundle', 'difftool', 'mergetool', 'lfs',
+])
+
+/** branch / tag / remote / config / stash 这些「读也行写也行」的子命令，看实参判断。 */
+function gitSubLooksReadonly(sub, rest) {
+  const first = String(rest[0] ?? '')
+  if (sub === 'branch' || sub === 'tag') {
+    if (!rest.length) return true
+    return /^(-a|-r|-l|--list|-v|--verbose|--no-color|--color|--show-current|--contains|--no-contains|--merged|--no-merged|--points-at|--sort|--format)/.test(first)
+  }
+  if (sub === 'remote') return !rest.length || /^(-v|--verbose|show|get-url)$/.test(first)
+  if (sub === 'config') {
+    if (rest.some(token => /^(--get|--get-all|--get-regexp|--list|-l|--show-origin|--show-scope|--name-only)$/.test(token))) return true
+    const values = rest.filter(token => !token.startsWith('-'))
+    return values.length <= 1 // 只给 key 是读，key + value 是写
+  }
+  if (sub === 'reflog') return !rest.length || /^(show|exists)$/.test(first)
+  if (sub === 'stash') return /^(list|show)$/.test(first)
+  if (sub === 'worktree') return /^list$/.test(first)
+  if (sub === 'submodule') return /^(status|summary)$/.test(first)
+  if (sub === 'notes') return /^(list|show)$/.test(first)
+  if (sub === 'bisect') return /^(log|visualize)$/.test(first)
+  if (sub === 'lfs') return /^(ls-files|env|version|status)$/.test(first)
+  if (sub === 'difftool' || sub === 'mergetool') return /^(--tool-help|--help)$/.test(first)
+  return false
+}
+
+/** 从一段 shell 文本里找出会改仓库状态的 git 调用；命中返回 { sub, rest }，否则 null。 */
+function gitWriteHit(command) {
+  const text = stripShellComments(String(command ?? ''))
+  if (!text.trim()) return null
+  const segments = text.split(/\r?\n|;|&&|\|\||\|/)
+  for (const segment of segments) {
+    const tokens = segment.trim().split(/\s+/).filter(Boolean)
+    for (let index = 0; index < tokens.length; index += 1) {
+      const base = tokens[index]
+        .replace(/^[&('"`$!]+/, '')
+        .replace(/['"`)]+$/, '')
+        .split(/[\\/]/)
+        .pop()
+        .toLowerCase()
+      if (base !== 'git' && base !== 'git.exe') continue
+      let cursor = index + 1
+      let sub = ''
+      const rest = []
+      while (cursor < tokens.length) {
+        const token = tokens[cursor].replace(/^['"`]+/, '').replace(/['"`]+$/, '')
+        if (!sub) {
+          if (/^(-C|-c|--git-dir|--work-tree|--namespace|--exec-path|--super-prefix)$/.test(token)) {
+            cursor += 2
+            continue
+          }
+          if (/^(-p|--no-pager|--paginate|--bare|--literal-pathspecs|--no-replace-objects|--version|--help)$/.test(token)) {
+            cursor += 1
+            continue
+          }
+          if (token.startsWith('-')) {
+            cursor += 1
+            continue
+          }
+          sub = token.toLowerCase()
+          cursor += 1
+          continue
+        }
+        rest.push(token)
+        cursor += 1
+      }
+      if (!sub) continue // 裸 git 只打印帮助
+      if (GIT_READ_SUBCOMMANDS.has(sub)) continue
+      if (GIT_WRITE_SUBCOMMANDS.has(sub) && gitSubLooksReadonly(sub, rest)) continue
+      return { sub, rest }
+    }
+  }
+  return null
+}
+
+/** 从工具实参里取出会被当作命令执行的文本。 */
+function commandTextOf(toolName, args) {
+  if (toolName === 'pwsh' || toolName === 'bash' || toolName === 'shell') {
+    const value = args?.command ?? args?.cmd ?? args?.script
+    return typeof value === 'string' ? value : ''
+  }
+  if (toolName === 'terminal_send') {
+    const value = args?.text
+    return typeof value === 'string' ? value : ''
+  }
+  return ''
+}
+
+function gitBlockReason(hit) {
+  return `GIT_BLOCKED：本会话不允许改动 git 仓库，命令里的「git ${hit.sub}」没有执行（gitMode=block，这一道与方案批不批准无关）。\n`
+    + '只读查看可以用：git status / git log / git diff / git show / git blame / git branch / git tag / git remote -v / git ls-files。\n'
+    + '要提交、推送、切分支或改历史，请由用户在终端自己执行；确实需要模型动 git，把配置里的 gitMode 设为 off。'
+}
 const READONLY_CLIPBOARD_ACTIONS = new Set(['read'])
 const READONLY_WINDOWS_ACTIONS = new Set(['list'])
 
@@ -212,13 +324,16 @@ const RULES_TEXT = `# Plan Gate（先问后做）
 5. 只有用户点了「批准执行」，阶段才进入 approved，执行类工具放行；此时一次把方案做完，不要擅自扩大范围。
 6. 用户选择「需要修改」或直接写了新要求：调整方案后再次 \`plan_gate_propose\`，不要先执行再解释。
 7. 纯问答、闲聊、只读调研可以直接回答，不必走闸门。
+8. **不要动 git**：本会话禁止 git 写操作（add / commit / push / pull / tag / reset / checkout / merge / config 写…），即使方案已批准也会被 \`GIT_BLOCKED\` 拦下。只能只读查看（status / log / diff / show / blame / branch 列表）。要提交或推送，把命令写进方案让用户自己在终端执行。
 
 被拒时不要换工具硬试：立刻用 \`ask_user_question\` 澄清，或直接 \`plan_gate_propose\`。`
 
 const RULES_TEXT_OFF = `# Plan Gate：已关闭
 
 本轮按正常流程直接执行：不必先提问，也不必先提交方案等待批准；执行类工具不被拦截。
-如果用户明确要求「先给方案再动手」，仍然照办——用 plan_gate_propose 征求确认。`
+如果用户明确要求「先给方案再动手」，仍然照办——用 plan_gate_propose 征求确认。
+
+**git 护栏不随本档位关闭**：git 写操作（add / commit / push / tag / reset / checkout…）仍会被 \`GIT_BLOCKED\` 拒绝，只读查看照常。`
 
 const RULES_TEXT_BRIEF = `# Plan Gate（精简）
 
@@ -232,7 +347,8 @@ const RULES_TEXT_BRIEF = `# Plan Gate（精简）
    - \`changes\`、\`acceptance\` 可选，只在某处改动必须说清时才补一两行。
    步骤、目标背景、动机、风险段落不要写——除非某一处会毁数据。
 4. 批准后才动手；未批准时写文件、起进程、操作电脑会被拦并返回 \`PLAN_GATE_BLOCKED\`。
-5. 用户要改方案时，重新提交一份「一句话 + 文件清单」，不要先执行。`
+5. 用户要改方案时，重新提交一份「一句话 + 文件清单」，不要先执行。
+6. 不要动 git：add / commit / push / tag / reset / checkout 这类写操作一律被 \`GIT_BLOCKED\` 拦下，与档位和批准状态都无关；只能只读查看。`
 
 function blockReason(toolName, phase, mode) {
   const briefHint = mode === MODE_BRIEF
@@ -668,6 +784,7 @@ export function apply(ctx, config = {}) {
   const readonlyExtra = new Set(Array.isArray(config.readonlyTools) ? config.readonlyTools : [])
   const guardedExtra = new Set(Array.isArray(config.guardedTools) ? config.guardedTools : [])
   const shellMode = config.shellMode === 'allowlist' ? 'allowlist' : 'guard'
+  const gitMode = config.gitMode === 'off' ? 'off' : 'block'
   const extraReadonlyShell = new Set(
     (Array.isArray(config.extraReadonlyShell) ? config.extraReadonlyShell : [])
       .map(name => String(name).toLowerCase()),
@@ -744,6 +861,13 @@ export function apply(ctx, config = {}) {
   ctx.on('tools/pre-execute', async (exec, next) => {
     const toolName = String(exec?.name ?? '')
     if (!toolName) return next()
+
+    // git 护栏要先于只读判定：`git commit` 不含写意图关键词，会被当成只读命令直接放过去
+    if (gitMode === 'block') {
+      const hit = gitWriteHit(commandTextOf(toolName, exec?.arguments))
+      if (hit) return { kind: 'deny', reason: gitBlockReason(hit) }
+    }
+
     if (isExempt(toolName, exec?.arguments)) return next()
 
     const agent = exec?.agent
@@ -794,6 +918,7 @@ export function apply(ctx, config = {}) {
         text: JSON.stringify({
           mode: state.mode,
           enabled: state.mode !== MODE_OFF,
+          gitMode,
           phase: state.phase,
           planTitle: plan?.title ?? null,
           hint: state.mode === MODE_OFF

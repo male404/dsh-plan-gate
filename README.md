@@ -15,6 +15,7 @@
 | 能力 | 说明 |
 | --- | --- |
 | 硬闸门 | 未批准时执行类工具被 deny，不是靠模型自觉 |
+| git 护栏 | git 写操作一律 `GIT_BLOCKED`，批准了方案也不许提交推送 |
 | 三档可调 | `off` / `detail` / `brief`，每轮对话独立 |
 | 真确认 | 方案卡片走宿主原生 `askQuestion`，模型无法自报「用户同意了」 |
 | 只读不拦 | 读文件、搜网页、看窗口照常放行，调研不受影响 |
@@ -120,6 +121,7 @@ profile 的 `cordis.patch.yml` 里：
       config:
         defaultMode: detail            # off / detail / brief
         shellMode: guard              # guard = 只拦写意图（默认）；allowlist = 只读白名单
+        gitMode: block                # block = 禁止 git 写操作（默认）；off = 不拦
         readonlyTools: []             # 额外放行的工具名
         guardedTools: []              # 额外强制拦截（覆盖所有放行判定）
         extraShellGuard: []           # 追加拦截词，如 ["Invoke-Sqlcmd"]
@@ -195,6 +197,24 @@ idle ──plan_gate_propose──> proposed ──┬──「批准执行」�
 | `windows` | 仅 `list` |
 
 其余（`write` `edit` `terminal_*` `blender_python` `subagent` `plugin_manager` …）一律照拦。`subagent` 本身要拦，是因为派生子代理可能绕过闸门。
+
+### git 护栏：不许动 git
+
+`gitMode: block`（默认）时，本会话内的 git 写操作一律拒绝，返回 `GIT_BLOCKED`——**与档位无关，也与方案批不批准无关**：批准了方案也不代表允许模型提交、推送、切分支。
+
+拦的是这些子命令：`add` `commit` `push` `pull` `fetch` `merge` `rebase` `reset` `checkout` `switch` `restore` `clean` `stash`（非 list/show）`tag`（非 -l）`branch`（非列表）`remote`（非 -v）`config`（写）`rm` `mv` `init` `clone` `apply` `am` `gc` `reflog`（非 show）`update-ref` `submodule`（非 status）…以及任何未列出的子命令。
+
+放行的是只读：`status` `log` `diff` `show` `blame` `shortlog` `describe` `rev-parse` `ls-files` `ls-tree` `cat-file` `show-ref` `merge-base` `grep` `lfs ls-files`，以及 `branch` / `tag` / `remote` / `config` 的查询形态。
+
+```bash
+git status --short        # 放行
+git log --oneline -5      # 放行
+git commit -m "feat: x"   # GIT_BLOCKED
+git push origin main      # GIT_BLOCKED
+cd ~/repo; git add -A     # GIT_BLOCKED（多段命令、-C、管道都能认出来）
+```
+
+要提交请让用户在终端自己做；确实需要模型动 git，把 `gitMode` 设成 `off`。
 
 ## 移交新对话
 
